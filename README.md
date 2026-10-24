@@ -150,7 +150,7 @@ The extraction stage never executes macros. Other macro-valued doc attributes, s
 flowchart LR
     src["Entry file<br/>(src/lib.rs or main.rs)"] --> parse["syn: crate-level<br/>#![doc] attributes"]
     parse --> text["String literals<br/>(//! and /*! */)"]
-    parse --> mmd["simple_mermaid::mermaid!(&quot;file&quot;)"]
+    parse --> mmd["simple_mermaid::mermaid!(#quot;file#quot;)"]
     mmd --> read["Read file relative to<br/>the invoking .rs file"]
     read --> fence["Fenced mermaid block"]
     text --> doc["Markdown doc"]
