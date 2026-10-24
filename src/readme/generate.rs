@@ -157,6 +157,7 @@ pub fn readme_path(
 ///
 /// Intralink resolution may invoke Cargo/rustdoc and write build artifacts.
 pub fn generate(options: &Options, current_dir: &Path) -> Result<Generated, Error> {
+    // Locate the package and source entrypoint for the generation pipeline.
     let project = Project::discover(
         options.manifest_path.as_deref(),
         options.workspace_project.as_deref(),
@@ -167,9 +168,11 @@ pub fn generate(options: &Options, current_dir: &Path) -> Result<Generated, Erro
         target,
     } = project.entrypoint(&options.entrypoint)?;
 
+    // Step 1: Extract crate documentation, expanding Mermaid diagrams in place.
     let extracted = extract::extract_doc_from_source_file(&entry)?
         .ok_or_else(|| Error::NoRustdoc(entry.clone()))?;
 
+    // Step 2: Apply cargo-rdme transforms: hidden Rust lines, Rust code-block tags and intralinks.
     let (doc, warnings) = transform_doc(
         &extracted.doc,
         TransformContext {
@@ -181,6 +184,7 @@ pub fn generate(options: &Options, current_dir: &Path) -> Result<Generated, Erro
         },
     )?;
 
+    // Read the existing README to locate markers and infer its line terminator.
     let readme_path = readme_path(options, &project, current_dir)?;
     let current = std::fs::read(&readme_path).map_err(|source| Error::ReadReadme {
         path: readme_path.clone(),
@@ -192,6 +196,8 @@ pub fn generate(options: &Options, current_dir: &Path) -> Result<Generated, Erro
     })?;
 
     let line_terminator = select_line_terminator(options.line_terminator, current_text);
+    // Steps 3 and 4: Inject between cargo-rdme markers with heading adjustment, then serialize
+    // with the selected line terminator. Both stages happen in memory inside render_readme.
     let rendered = render_readme(
         current_text,
         &doc,
