@@ -133,7 +133,7 @@
 //! * a `mermaid!` invocation anywhere else in a crate-level attribute, for example inside
 //!   `#![cfg_attr(doc, doc = mermaid!("…"))]` or nested in another macro.
 //!
-//! No macro is ever executed. Other macro-valued doc attributes, such as
+//! The extraction stage never executes macros. Other macro-valued doc attributes, such as
 //! `#![doc = include_str!("../README.md")]`, are skipped exactly as cargo-rdme skips them.
 //!
 //! # How it works
@@ -144,7 +144,7 @@
 //! compared or written:
 //!
 //! * `--check` compares the final bytes with the file, so a changed diagram file, changed prose
-//!   or different line endings all make it fail with exit code 3. It never writes any file.
+//!   or different line endings all make it fail with exit code 3. It never writes the README.
 //! * Without `--check`, every input (source, diagrams, markers) is validated first; the README is
 //!   written only if its content changed. Running the command again produces identical bytes.
 //!
@@ -192,23 +192,30 @@
 //! * **Unchanged READMEs are not rewritten**, so the git overwrite check only applies when the
 //!   content actually changes. The check itself follows cargo-rdme: untracked or modified READMEs
 //!   inside a git repository are not overwritten without `--force`.
-//! * **Intralinks** that are resolved (rather than stripped) need the nightly toolchain pinned by
-//!   cargo-rdme, exactly as with `cargo rdme`. Install it with
-//!   `cargo rdme-with-mermaid install-rust-toolchain-for-intralinks`, or use
-//!   `--intralinks-strip-links`. Intralinks are only looked for outside code blocks, so diagram
-//!   content is never rewritten.
+//! * **Intralinks** that are resolved (rather than stripped) need an already-installed nightly
+//!   toolchain pinned by cargo-rdme. This tool does not install toolchains or change user-level
+//!   configuration. If the required toolchain is missing, the error provides a manual
+//!   `rustup toolchain install <toolchain>` command. You can select another compatible installed
+//!   toolchain with `intralinks.rustdoc-toolchain` or `CARGO_RDME_RUSTDOC_TOOLCHAIN`, or explicitly
+//!   use `--intralinks-strip-links` to avoid rustdoc. Missing prerequisites do not automatically
+//!   enable stripping. Unlike cargo-rdme, this tool has no toolchain installation subcommand.
+//!   Resolving intralinks invokes Cargo/rustdoc, which can execute build scripts and procedural
+//!   macros, download dependencies, and write build artifacts or update a lockfile, even with
+//!   `--check`. Intralinks are only looked for outside code blocks, so diagram content is never
+//!   rewritten.
 //! * **Diagram placement inside lists or block quotes** is not re-indented: write the attribute
 //!   at the top level of the documentation.
 //!
 //! # Library
 //!
 //! The crate is also a library. The stages can be used separately: [`cli`] (argument parsing),
-//! [`config`] and [`options`] (configuration), [`project`] (package discovery), [`extract`] and
-//! [`mermaid`] (source extraction), [`generate`] (in-memory composition) and [`update`] (checking
-//! and writing). [`run`] ties them together.
+//! [`config`] and [`config::options`] (configuration), [`project`] (package discovery), and the
+//! [`readme`] pipeline: [`readme::extract`] and [`readme::mermaid`] (source extraction),
+//! [`readme::generate`] (in-memory composition) and [`readme::update`] (checking and writing).
+//! [`run`] ties them together. The original top-level module paths remain available as re-exports.
 //!
 //! ```no_run
-//! use cargo_rdme_with_mermaid::{options::CmdOptions, resolve_options, run};
+//! use cargo_rdme_with_mermaid::{config::options::CmdOptions, resolve_options, run};
 //!
 //! let cwd = std::env::current_dir()?;
 //! let options = resolve_options(CmdOptions { check: true, ..Default::default() }, &cwd, |w| eprintln!("{w}"))?;
@@ -221,16 +228,16 @@ use std::path::{Path, PathBuf};
 
 pub mod cli;
 pub mod config;
-pub mod extract;
-pub mod generate;
-pub mod mermaid;
-pub mod options;
 pub mod project;
-pub mod update;
+pub mod readme;
 
-use generate::Generated;
-use options::{CmdOptions, Options};
-use update::Outcome;
+// Preserve the original public module paths for library consumers.
+pub use config::options;
+pub use readme::{extract, generate, mermaid, update};
+
+use config::options::{CmdOptions, Options};
+use readme::generate::Generated;
+use readme::update::Outcome;
 
 /// Any error the command can produce.
 #[derive(Debug, thiserror::Error)]
@@ -281,7 +288,7 @@ pub enum Error {
         source: cargo_rdme::InjectDocError,
     },
     /// Intralink resolution failed.
-    #[error("failed to transform intralinks: {0}")]
+    #[error("failed to transform intralinks: {}", intralink_diagnostic(.0))]
     Intralinks(cargo_rdme::transform::IntralinkError),
     /// The README has uncommitted changes and `--force` was not given.
     #[error(
@@ -307,6 +314,21 @@ impl Error {
             Error::CheckHasWarnings => 4,
             _ => 1,
         }
+    }
+}
+
+fn intralink_diagnostic(error: &cargo_rdme::transform::IntralinkError) -> String {
+    match error {
+        cargo_rdme::transform::IntralinkError::RustToolchainNotInstalled { expected } => format!(
+            "rust toolchain not installed: {expected}\n\n\
+             Intralink resolution requires an already-installed compatible toolchain.\n\
+             Install the required toolchain manually with:\n\n    \
+             rustup toolchain install {expected}\n\n\
+             Or select a compatible installed toolchain with CARGO_RDME_RUSTDOC_TOOLCHAIN\n\
+             or intralinks.rustdoc-toolchain. Use --intralinks-strip-links to explicitly\n\
+             remove intralinks instead of resolving them."
+        ),
+        other => other.to_string(),
     }
 }
 
@@ -356,4 +378,37 @@ pub fn run(options: &Options, current_dir: &Path) -> Result<Report, Error> {
     };
 
     Ok(Report { generated, outcome })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_toolchain_diagnostic_describes_manual_setup() {
+        let error = Error::Intralinks(
+            cargo_rdme::transform::IntralinkError::RustToolchainNotInstalled {
+                expected: cargo_rdme::transform::EXPECTED_RUST_TOOLCHAIN,
+            },
+        );
+        let message = error.to_string();
+        assert!(message.contains(&format!(
+            "rustup toolchain install {}",
+            cargo_rdme::transform::EXPECTED_RUST_TOOLCHAIN
+        )));
+        assert!(message.contains("CARGO_RDME_RUSTDOC_TOOLCHAIN"));
+        assert!(message.contains("--intralinks-strip-links"));
+        assert!(!message.contains("install-rust-toolchain-for-intralinks"));
+        assert_eq!(error.exit_code(), 1);
+    }
+
+    #[test]
+    fn other_intralink_diagnostics_are_preserved() {
+        let source = cargo_rdme::transform::IntralinkError::UnsupportedRustdocFormatVersion {
+            version: 0,
+            expected_version: 61,
+        };
+        let expected = format!("failed to transform intralinks: {source}");
+        assert_eq!(Error::Intralinks(source).to_string(), expected);
+    }
 }

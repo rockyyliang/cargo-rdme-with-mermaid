@@ -1,7 +1,7 @@
 //! Checking and writing the generated README.
 
+use super::generate::Generated;
 use crate::Error;
-use crate::generate::Generated;
 use std::path::Path;
 
 /// What happened to the README.

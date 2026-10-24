@@ -2,7 +2,7 @@
 //!
 //! Discovery runs `cargo metadata --no-deps`, so dependencies are never resolved or downloaded.
 
-use crate::options::EntrypointOpt;
+use crate::config::options::EntrypointOpt;
 use cargo_metadata::{Metadata, MetadataCommand, Package, TargetKind};
 use cargo_rdme::PackageTarget;
 use std::collections::BTreeMap;

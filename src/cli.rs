@@ -1,7 +1,7 @@
 //! Command-line parsing.
 
-use crate::options::{CmdOptions, EntrypointOpt, LineTerminatorOpt};
-use clap::{Args, Parser, Subcommand};
+use crate::config::options::{CmdOptions, EntrypointOpt, LineTerminatorOpt};
+use clap::{Args, Parser};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -16,23 +16,10 @@ pub const SUBCOMMAND: &str = "rdme-with-mermaid";
     bin_name = "cargo rdme-with-mermaid",
     version
 )]
-#[command(args_conflicts_with_subcommands = true)]
 pub struct Cli {
-    /// Auxiliary commands.
-    #[command(subcommand)]
-    pub command: Option<Command>,
-
     /// Generation options.
     #[command(flatten)]
     pub run: RunArgs,
-}
-
-/// Auxiliary commands.
-#[derive(Debug, Subcommand)]
-pub enum Command {
-    /// Install the nightly rust toolchain cargo-rdme needs for intralink resolution.
-    #[command(hide = true)]
-    InstallRustToolchainForIntralinks,
 }
 
 /// Options for generating or checking the README. Same flags as `cargo rdme`.
@@ -206,16 +193,13 @@ mod tests {
     }
 
     #[test]
-    fn subcommand() {
-        let cli = parse(&[
+    fn rejects_removed_installer() {
+        let error = parse(&[
             "x",
             "rdme-with-mermaid",
             "install-rust-toolchain-for-intralinks",
         ])
-        .unwrap();
-        assert!(matches!(
-            cli.command,
-            Some(Command::InstallRustToolchainForIntralinks)
-        ));
+        .unwrap_err();
+        assert_eq!(error.kind(), clap::error::ErrorKind::UnknownArgument);
     }
 }

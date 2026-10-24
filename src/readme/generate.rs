@@ -2,11 +2,12 @@
 //!
 //! The pipeline is: extract docs (with diagrams expanded) → cargo-rdme transforms (hidden Rust
 //! lines, Rust code-block tags, intralinks) → cargo-rdme injection between markers (with heading
-//! adjustment) → serialization with the selected line terminator. Nothing is written here.
+//! adjustment) → serialization with the selected line terminator. The README is not written here;
+//! intralink resolution may invoke Cargo/rustdoc and write build artifacts.
 
+use super::extract::{self, ExpandedDiagram};
 use crate::Error;
-use crate::extract::{self, ExpandedDiagram};
-use crate::options::{LineTerminatorOpt, Options};
+use crate::config::options::{LineTerminatorOpt, Options};
 use crate::project::{Entrypoint, Project};
 use cargo_rdme::transform::{
     DocTransform, DocTransformIntralinks, DocTransformRustMarkdownTag,
@@ -152,7 +153,9 @@ pub fn readme_path(
     }
 }
 
-/// Runs the whole pipeline for already-merged `options`, without writing anything.
+/// Runs the whole pipeline for already-merged `options`, without writing the README.
+///
+/// Intralink resolution may invoke Cargo/rustdoc and write build artifacts.
 pub fn generate(options: &Options, current_dir: &Path) -> Result<Generated, Error> {
     let project = Project::discover(
         options.manifest_path.as_deref(),
