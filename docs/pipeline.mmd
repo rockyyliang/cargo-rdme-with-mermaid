@@ -1,0 +1,14 @@
+flowchart LR
+    src["Entry file<br/>(src/lib.rs or main.rs)"] --> parse["syn: crate-level<br/>#![doc] attributes"]
+    parse --> text["String literals<br/>(//! and /*! */)"]
+    parse --> mmd["simple_mermaid::mermaid!(&quot;file&quot;)"]
+    mmd --> read["Read file relative to<br/>the invoking .rs file"]
+    read --> fence["Fenced mermaid block"]
+    text --> doc["Markdown doc"]
+    fence --> doc
+    doc --> transforms["cargo-rdme transforms<br/>hidden lines · rust tags · intralinks"]
+    transforms --> inject["cargo-rdme injection<br/>markers · heading levels"]
+    inject --> bytes["Serialized README<br/>(LF or CRLF)"]
+    bytes --> check{"--check?"}
+    check -- yes --> cmp["Compare bytes; exit 3 if stale"]
+    check -- no --> write["Write if changed<br/>(git overwrite protection)"]

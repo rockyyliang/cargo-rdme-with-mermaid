@@ -1,0 +1,58 @@
+[package]
+name = "cargo-rdme-with-mermaid"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96.0"
+description = "Cargo command that generates your README from crate docs, like cargo-rdme, with simple-mermaid diagrams expanded inline"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rockyyliang/cargo-rdme-with-mermaid"
+documentation = "https://docs.rs/cargo-rdme-with-mermaid"
+readme = "README.md"
+keywords = ["readme", "cargo", "documentation", "mermaid", "rdme"]
+categories = ["development-tools::cargo-plugins", "command-line-utilities"]
+include = [
+    "/src/**/*.rs",
+    "/docs/**/*",
+    "/tests/**/*",
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-MIT",
+    "/LICENSE-APACHE",
+]
+
+[lib]
+name = "cargo_rdme_with_mermaid"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-rdme-with-mermaid"
+path = "src/main.rs"
+
+[dependencies]
+# Only used to render this crate's own documentation diagram on docs.rs.
+simple-mermaid = "0.2.0"
+cargo-rdme = "2.2.3"
+cargo_metadata = "0.23.1"
+clap = { version = "4.6.7", features = ["derive"] }
+dunce = "1.0.5"
+# Same version and features as cargo-rdme, so the dependency graph does not grow.
+gix = { version = "0.87.1", default-features = false, features = ["status", "dirwalk", "sha1"] }
+proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
+quote = "1.0.35"
+syn = { version = "3.0.6", features = ["full", "parsing", "printing"] }
+thiserror = "2.0.20"
+toml = "1.1.6"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module-name-repetitions = "allow"
+missing-errors-doc = "allow"

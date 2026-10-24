@@ -1,0 +1,4 @@
+# Intralinks in the crate docs are kept as plain code text in the README, so regenerating it does
+# not require the nightly toolchain that resolving them would.
+[intralinks]
+strip-links = true
