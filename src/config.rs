@@ -1,7 +1,9 @@
 //! Reading `.cargo-rdme.toml`, with the same keys and validation as cargo-rdme.
 
-use crate::options::{EntrypointOpt, LineTerminatorOpt};
+pub mod options;
+
 use cargo_rdme::transform::{IntralinksConfig, IntralinksDocsConfig};
+use options::{EntrypointOpt, LineTerminatorOpt};
 use std::path::{Path, PathBuf};
 use toml::Value;
 

@@ -8,7 +8,7 @@
 //! The source is parsed with `syn`, so text inside doc comments (for instance a code example
 //! showing the macro) is never mistaken for an attribute.
 
-use crate::mermaid::{self, Location, MermaidInvocation, UnsupportedInvocation};
+use super::mermaid::{self, Location, MermaidInvocation, UnsupportedInvocation};
 use cargo_rdme::Doc;
 use quote::ToTokens;
 use std::collections::HashMap;

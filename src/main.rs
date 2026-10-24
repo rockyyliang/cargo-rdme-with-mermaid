@@ -1,8 +1,8 @@
 //! The `cargo rdme-with-mermaid` command.
 
-use cargo_rdme_with_mermaid::cli::{self, Command};
-use cargo_rdme_with_mermaid::generate::{self, Generated};
-use cargo_rdme_with_mermaid::update::{self, Outcome};
+use cargo_rdme_with_mermaid::cli;
+use cargo_rdme_with_mermaid::readme::generate::{self, Generated};
+use cargo_rdme_with_mermaid::readme::update::{self, Outcome};
 use cargo_rdme_with_mermaid::{Error, resolve_options};
 use std::process::ExitCode;
 
@@ -10,22 +10,6 @@ fn print_warnings(generated: &Generated) {
     for warning in &generated.warnings {
         eprintln!("warning: {warning}");
     }
-}
-
-fn install_rust_toolchain_for_intralinks() -> Result<(), cargo_rdme::transform::IntralinkError> {
-    use cargo_rdme::transform::{
-        EXPECTED_RUST_TOOLCHAIN, install_expected_rust_toolchain,
-        is_expected_rust_toolchain_installed,
-    };
-
-    if is_expected_rust_toolchain_installed()? {
-        eprintln!("info: rust toolchain `{EXPECTED_RUST_TOOLCHAIN}` is already installed.");
-        return Ok(());
-    }
-    eprintln!("info: installing rust toolchain `{EXPECTED_RUST_TOOLCHAIN}`...");
-    install_expected_rust_toolchain()?;
-    eprintln!("info: rust toolchain `{EXPECTED_RUST_TOOLCHAIN}` installed.");
-    Ok(())
 }
 
 fn main_inner(cli: cli::Cli) -> Result<(), Error> {
@@ -59,16 +43,6 @@ fn main() -> ExitCode {
         Ok(cli) => cli,
         Err(e) => e.exit(),
     };
-
-    if let Some(Command::InstallRustToolchainForIntralinks) = cli.command {
-        return match install_rust_toolchain_for_intralinks() {
-            Ok(()) => ExitCode::SUCCESS,
-            Err(e) => {
-                eprintln!("error: failed to install rust toolchain: {e}");
-                ExitCode::FAILURE
-            }
-        };
-    }
 
     match main_inner(cli) {
         Ok(()) => ExitCode::SUCCESS,

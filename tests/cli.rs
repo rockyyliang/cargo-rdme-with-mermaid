@@ -451,6 +451,16 @@ fn direct_invocation_without_subcommand_name() {
     assert_eq!(f.read("README.md"), expected("plain.md"));
 }
 
+#[test]
+fn removed_installer_is_rejected_without_touching_project() {
+    let f = Fixture::new("plain");
+    let before = f.snapshot();
+    let output = f.run(&["install-rust-toolchain-for-intralinks"]);
+    assert_code(&output, 2);
+    assert!(stderr(&output).contains("unexpected argument"));
+    assert_eq!(f.snapshot(), before);
+}
+
 fn git(dir: &Path, args: &[&str]) {
     let status = Command::new("git")
         .args([

@@ -1,6 +1,6 @@
 //! Effective options, after merging command-line flags with `.cargo-rdme.toml`.
 
-use crate::config::ConfigFileOptions;
+use super::ConfigFileOptions;
 use cargo_rdme::transform::IntralinksConfig;
 use std::fmt;
 use std::path::PathBuf;

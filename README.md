@@ -141,7 +141,7 @@ silently dropped:
 * a `mermaid!` invocation anywhere else in a crate-level attribute, for example inside
   `#![cfg_attr(doc, doc = mermaid!("…"))]` or nested in another macro.
 
-No macro is ever executed. Other macro-valued doc attributes, such as
+The extraction stage never executes macros. Other macro-valued doc attributes, such as
 `#![doc = include_str!("../README.md")]`, are skipped exactly as cargo-rdme skips them.
 
 ## How it works
@@ -167,7 +167,7 @@ The README is composed completely in memory, including diagrams and line endings
 compared or written:
 
 * `--check` compares the final bytes with the file, so a changed diagram file, changed prose
-  or different line endings all make it fail with exit code 3. It never writes any file.
+  or different line endings all make it fail with exit code 3. It never writes the README.
 * Without `--check`, every input (source, diagrams, markers) is validated first; the README is
   written only if its content changed. Running the command again produces identical bytes.
 
@@ -215,23 +215,30 @@ produces the same README as `cargo rdme`. Differences:
 * **Unchanged READMEs are not rewritten**, so the git overwrite check only applies when the
   content actually changes. The check itself follows cargo-rdme: untracked or modified READMEs
   inside a git repository are not overwritten without `--force`.
-* **Intralinks** that are resolved (rather than stripped) need the nightly toolchain pinned by
-  cargo-rdme, exactly as with `cargo rdme`. Install it with
-  `cargo rdme-with-mermaid install-rust-toolchain-for-intralinks`, or use
-  `--intralinks-strip-links`. Intralinks are only looked for outside code blocks, so diagram
-  content is never rewritten.
+* **Intralinks** that are resolved (rather than stripped) need an already-installed nightly
+  toolchain pinned by cargo-rdme. This tool does not install toolchains or change user-level
+  configuration. If the required toolchain is missing, the error provides a manual
+  `rustup toolchain install <toolchain>` command. You can select another compatible installed
+  toolchain with `intralinks.rustdoc-toolchain` or `CARGO_RDME_RUSTDOC_TOOLCHAIN`, or explicitly
+  use `--intralinks-strip-links` to avoid rustdoc. Missing prerequisites do not automatically
+  enable stripping. Unlike cargo-rdme, this tool has no toolchain installation subcommand.
+  Resolving intralinks invokes Cargo/rustdoc, which can execute build scripts and procedural
+  macros, download dependencies, and write build artifacts or update a lockfile, even with
+  `--check`. Intralinks are only looked for outside code blocks, so diagram content is never
+  rewritten.
 * **Diagram placement inside lists or block quotes** is not re-indented: write the attribute
   at the top level of the documentation.
 
 ## Library
 
 The crate is also a library. The stages can be used separately: `cli` (argument parsing),
-`config` and `options` (configuration), `project` (package discovery), `extract` and
-`mermaid` (source extraction), `generate` (in-memory composition) and `update` (checking
-and writing). `run` ties them together.
+`config` and `config::options` (configuration), `project` (package discovery), and the
+`readme` pipeline: `readme::extract` and `readme::mermaid` (source extraction),
+`readme::generate` (in-memory composition) and `readme::update` (checking and writing).
+`run` ties them together. The original top-level module paths remain available as re-exports.
 
 ```rust
-use cargo_rdme_with_mermaid::{options::CmdOptions, resolve_options, run};
+use cargo_rdme_with_mermaid::{config::options::CmdOptions, resolve_options, run};
 
 let cwd = std::env::current_dir()?;
 let options = resolve_options(CmdOptions { check: true, ..Default::default() }, &cwd, |w| eprintln!("{w}"))?;
