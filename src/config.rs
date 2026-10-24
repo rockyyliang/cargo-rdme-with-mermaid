@@ -2,8 +2,8 @@
 
 pub mod options;
 
-use options::{EntrypointOpt, LineTerminatorOpt};
 use cargo_rdme::transform::{IntralinksConfig, IntralinksDocsConfig};
+use options::{EntrypointOpt, LineTerminatorOpt};
 use std::path::{Path, PathBuf};
 use toml::Value;
 
