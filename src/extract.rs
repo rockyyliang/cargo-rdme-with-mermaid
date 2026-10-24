@@ -314,7 +314,7 @@ mod tests {
     fn macro_text_inside_doc_examples_is_text() {
         let src = "//! ```\n//! #![doc = simple_mermaid::mermaid!(\"missing.mmd\")]\n//! ```\n/// #[doc = mermaid!(\"x\")]\nfn f() {}\n";
         let doc = expand(src, &[]).unwrap().unwrap();
-        assert!(doc.diagrams.is_empty());
+        assert_eq!(doc.diagrams.len(), 0);
         assert!(doc.doc.as_string().contains("mermaid!(\"missing.mmd\")"));
     }
 
