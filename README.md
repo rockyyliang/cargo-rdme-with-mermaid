@@ -86,6 +86,30 @@ Exit codes match cargo-rdme:
 Use this *instead of* `cargo rdme --check`: plain cargo-rdme ignores the diagrams and would
 report a mismatch for every README that contains one.
 
+## README generation and cargo doc
+
+For `#![doc = simple_mermaid::mermaid!("diagram.mmd")]`:
+
+* **README extraction** parses the invocation and reads the file without executing the macro;
+  your crate does not need a `simple-mermaid` dependency for this stage.
+* **`cargo doc`** expands the macro, so your crate must depend on `simple-mermaid`. Installing
+  this command does not add that dependency. Browser rendering loads Mermaid JavaScript from a CDN.
+
+Resolving intralinks also invokes rustdoc and requires a compilable crate. Use
+`--intralinks-strip-links` to skip that build.
+
+For both workflows, add the dependency, create `src/diagram.mmd`, and reference it from
+`src/lib.rs` using the source syntax below:
+
+```bash
+cargo add simple-mermaid@0.2
+cargo rdme-with-mermaid --intralinks-strip-links
+cargo doc --no-deps --open
+```
+
+Ordinary fenced `mermaid` blocks need no dependency and pass through to the README, but plain
+`cargo doc` displays them as code rather than diagrams.
+
 ## Source syntax
 
 Write the diagram reference as a crate-level (inner) doc attribute, between ordinary doc
